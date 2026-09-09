@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic Search — AI 智能搜索</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+<style>
+:root {
+  --bg: #0b0d13; --bg2: #13151e; --bg3: #1b1e2b;
+  --surface: #1e2235; --surface2: #252a3e;
+  --border: #2a2f45; --border2: #3a4060;
+  --text: #e2e4ef; --text2: #8b8fad; --text3: #5d6180;
+  --accent: #7c6cf0; --accent2: #9d8ffc; --accent-dim: rgba(124,108,240,0.12);
+  --green: #34d399; --green-dim: rgba(52,211,153,0.12);
+  --blue: #60a5fa; --blue-dim: rgba(96,165,250,0.12);
+  --amber: #fbbf24; --amber-dim: rgba(251,191,36,0.12);
+  --red: #f87171; --red-dim: rgba(248,113,113,0.12);
+  --radius: 16px; --radius-sm: 10px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --max-w: 860px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Layout */
+.app { max-width: var(--max-w); margin: 0 auto; padding: 0 20px; }
+.hero { padding: 60px 0 20px; text-align: center; transition: padding 0.4s; }
+.hero.compact { padding: 20px 0 12px; }
+.hero.compact h1 { font-size: 1.3rem; }
+.hero.compact .subtitle { display: none; }
+
+.logo { font-size: 2.4rem; margin-bottom: 4px; }
+.hero h1 {
+  font-size: 2.2rem; font-weight: 700; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #7c6cf0, #60a5fa, #34d399);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  transition: font-size 0.4s;
+}
+.subtitle { color: var(--text2); font-size: 0.88rem; margin-top: 6px; letter-spacing: 0.5px; }
+
+/* Search */
+.search-wrap { position: sticky; top: 0; z-index: 100; padding: 12px 0; background: var(--bg); }
+.search-bar {
+  display: flex; align-items: center; gap: 0;
+  background: var(--bg2); border: 1.5px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow); transition: border-color 0.2s;
+}
+.search-bar:focus-within { border-color: var(--accent); }
+.search-bar input {
+  flex: 1; padding: 16px 20px; background: none; border: none;
+  color: var(--text); font-size: 1.05rem; outline: none;
+}
+.search-bar input::placeholder { color: var(--text3); }
+.search-bar button {
+  padding: 10px 24px; margin: 6px; background: var(--accent); color: white; border: none;
+  border-radius: var(--radius-sm); font-size: 0.92rem; font-weight: 600; cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s; white-space: nowrap;
+}
+.search-bar button:hover:not(:disabled) { opacity: 0.9; }
+.search-bar button:active:not(:disabled) { transform: scale(0.97); }
+.search-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Quick examples */
+.examples { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 0 6px; }
+.examples button {
+  padding: 6px 14px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 20px; font-size: 0.78rem; color: var(--text2); cursor: pointer;
+  transition: all 0.15s; white-space: nowrap;
+}
+.examples button:hover { border-color: var(--accent); color: var(--text); background: var(--accent-dim); }
+
+/* Pipeline / Status */
+.pipeline { padding: 8px 0; }
+.pipe-step {
+  display: flex; align-items: center; gap: 10px; padding: 5px 0;
+  font-size: 0.82rem; color: var(--text2); animation: fadeIn 0.2s;
+}
+.pipe-step.active { color: var(--accent2); }
+.pipe-step.done { color: var(--green); }
+.pipe-icon { width: 20px; text-align: center; flex-shrink: 0; }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Intent badge */
+.intent-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 0; margin: 4px 0;
+}
+.intent-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 14px; font-size: 0.72rem; font-weight: 600;
+}
+.intent-badge.news { background: var(--red-dim); color: var(--red); }
+.intent-badge.academic { background: var(--blue-dim); color: var(--blue); }
+.intent-badge.finance { background: var(--amber-dim); color: var(--amber); }
+.intent-badge.entertainment { background: #a78bfa22; color: #a78bfa; }
+.intent-badge.technical { background: var(--green-dim); color: var(--green); }
+.intent-badge.medical { background: #f472b622; color: #f472b6; }
+.intent-badge.legal { background: #fb923c22; color: #fb923c; }
+.intent-badge.shopping { background: #facc1522; color: #facc15; }
+.intent-badge.general { background: var(--accent-dim); color: var(--accent2); }
+.query-tag {
+  padding: 3px 10px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; font-size: 0.75rem; color: var(--text2);
+}
+
+/* Error */
+.error-box {
+  display: none; padding: 12px 16px; margin: 8px 0;
+  background: var(--red-dim); border: 1px solid rgba(248,113,113,0.3);
+  border-radius: var(--radius-sm); color: var(--red); font-size: 0.88rem;
+}
+.error-box.show { display: block; animation: fadeIn 0.2s; }
+
+/* Answer area */
+.result-section { display: none; padding-bottom: 60px; }
+.result-section.show { display: block; animation: fadeIn 0.3s; }
+
+/* Meta stats */
+.meta-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 0; font-size: 0.78rem; color: var(--text3);
+}
+.meta-bar .chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; background: var(--surface); border-radius: 12px;
+}
+
+/* Answer card */
+.answer-card {
+  padding: 28px 32px; margin: 8px 0 16px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); line-height: 1.85; font-size: 0.94rem;
+}
+.answer-card h1,.answer-card h2,.answer-card h3,.answer-card h4 {
+  color: var(--accent2); margin: 20px 0 8px; font-weight: 700;
+}
+.answer-card h1 { font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.answer-card h2 { font-size: 1.12rem; }
+.answer-card h3 { font-size: 1.02rem; }
+.answer-card h4 { font-size: 0.95rem; }
+.answer-card p { margin: 8px 0; }
+.answer-card ul,.answer-card ol { padding-left: 1.6em; margin: 8px 0; }
+.answer-card li { margin: 4px 0; }
+.answer-card strong { color: var(--accent2); font-weight: 600; }
+.answer-card em { color: var(--blue); font-style: italic; }
+.answer-card code {
+  background: var(--surface); padding: 2px 6px; border-radius: 5px; font-size: 0.86em;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+.answer-card pre {
+  background: var(--surface); padding: 16px; border-radius: var(--radius-sm);
+  overflow-x: auto; margin: 10px 0; border: 1px solid var(--border);
+}
+.answer-card pre code { background: none; padding: 0; }
+.answer-card table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+.answer-card th,.answer-card td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 0.86rem; }
+.answer-card th { background: var(--surface); color: var(--accent2); font-weight: 600; }
+.answer-card hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.answer-card blockquote {
+  border-left: 3px solid var(--accent); padding: 8px 16px; margin: 10px 0;
+  background: var(--accent-dim); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text2);
+}
+.answer-card .ref {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 4px; margin: 0 1px;
+  background: var(--accent-dim); border-radius: 4px;
+  color: var(--accent2); font-size: 0.7rem; font-weight: 700;
+  cursor: pointer; vertical-align: super; text-decoration: none;
+  transition: background 0.15s;
+}
+.answer-card .ref:hover { background: rgba(124,108,240,0.35); }
+
+.round2-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; margin-bottom: 16px;
+  background: var(--amber-dim); border: 1px solid rgba(251,191,36,0.25);
+  border-radius: 8px; font-size: 0.76rem; color: var(--amber); font-weight: 600;
+}
+
+/* Confidence indicator */
+.confidence-bar {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  padding: 8px 14px; background: var(--surface); border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.conf-meter {
+  flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; max-width: 120px;
+}
+.conf-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.conf-fill.high { background: var(--green); }
+.conf-fill.medium { background: var(--amber); }
+.conf-fill.low { background: var(--red); }
+.conf-label { font-size: 0.78rem; font-weight: 600; }
+.conf-label.high { color: var(--green); }
+.conf-label.medium { color: var(--amber); }
+.conf-label.low { color: var(--red); }
+.complexity-tag {
+  padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600;
+}
+.complexity-tag.simple { background: var(--green-dim); color: var(--green); }
+.complexity-tag.medium { background: var(--amber-dim); color: var(--amber); }
+.complexity-tag.complex { background: var(--red-dim); color: var(--red); }
+
+/* Evidence summary */
+.evidence-section {
+  margin: 12px 0 4px; padding: 0;
+}
+.evidence-header {
+  display: flex; align-items: center; gap: 8px; padding: 8px 0;
+  cursor: pointer; user-select: none; color: var(--text2); font-size: 0.82rem; font-weight: 600;
+}
+.evidence-header:hover { color: var(--text); }
+.evidence-body { display: none; padding: 10px 16px; background: var(--surface); border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 8px; }
+.evidence-body.open { display: block; animation: fadeIn 0.2s; }
+.evidence-body .ev-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 0.8rem; }
+.ev-icon { font-size: 0.75rem; }
+.ev-satisfied { color: var(--green); }
+.ev-unsatisfied { color: var(--red); }
+.ev-fact { color: var(--text2); font-size: 0.78rem; padding: 2px 0; }
+.ev-conflict { color: var(--amber); font-size: 0.78rem; padding: 2px 0; }
+
+/* Source tier badge */
+.tier-badge {
+  display: inline-block; padding: 1px 6px; border-radius: 6px; font-size: 0.62rem; font-weight: 700; margin-left: 4px;
+}
+.tier-badge.S { background: var(--green-dim); color: var(--green); }
+.tier-badge.A { background: var(--blue-dim); color: var(--blue); }
+.tier-badge.B { background: var(--amber-dim); color: var(--amber); }
+
+/* Copy button */
+.answer-header { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.copy-btn {
+  padding: 5px 12px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text2); font-size: 0.76rem; cursor: pointer;
+  transition: all 0.15s;
+}
+.copy-btn:hover { border-color: var(--accent); color: var(--text); }
+.copy-btn.copied { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+
+/* Sources */
+.sources-section { margin-top: 4px; }
+.sources-header {
+  display: flex; align-items: center; gap: 8px; padding: 10px 0;
+  cursor: pointer; user-select: none; color: var(--text2); font-size: 0.85rem; font-weight: 600;
+}
+.sources-header:hover { color: var(--text); }
+.sources-header .arrow { font-size: 0.65rem; transition: transform 0.2s; }
+.sources-header .arrow.open { transform: rotate(90deg); }
+.source-grid { display: none; gap: 8px; padding-bottom: 8px; }
+.source-grid.open { display: grid; grid-template-columns: 1fr; animation: fadeIn 0.2s; }
+.source-card {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  transition: border-color 0.15s;
+}
+.source-card:hover { border-color: var(--accent); }
+.src-num {
+  min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  background: var(--accent-dim); border-radius: 6px; font-size: 0.72rem; color: var(--accent2);
+  font-weight: 700; flex-shrink: 0;
+}
+.src-info { flex: 1; min-width: 0; }
+.src-title { font-size: 0.84rem; font-weight: 500; }
+.src-title a { color: var(--blue); text-decoration: none; }
+.src-title a:hover { text-decoration: underline; }
+.src-meta { display: flex; gap: 8px; margin-top: 2px; font-size: 0.72rem; color: var(--text3); }
+.src-badge {
+  padding: 1px 7px; background: var(--bg3); border-radius: 8px;
+  font-size: 0.68rem; color: var(--text3);
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 80px 20px 40px;
+  animation: fadeIn 0.5s;
+}
+.empty-icon { font-size: 3.5rem; opacity: 0.15; margin-bottom: 12px; }
+.empty-text { color: var(--text3); font-size: 0.9rem; }
+.empty-hint { color: var(--text3); font-size: 0.78rem; margin-top: 6px; opacity: 0.7; }
+
+/* Footer */
+.footer {
+  text-align: center; padding: 24px 0; color: var(--text3); font-size: 0.72rem;
+  border-top: 1px solid var(--border); margin-top: 20px;
+}
+.footer a { color: var(--text2); text-decoration: none; }
+
+/* Responsive */
+@media (max-width: 640px) {
+  .hero { padding: 32px 0 12px; }
+  .hero h1 { font-size: 1.6rem; }
+  .answer-card { padding: 20px 16px; }
+  .search-bar input { padding: 14px 16px; font-size: 1rem; }
+  .search-bar button { padding: 8px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="hero" id="hero">
+    <div class="logo">🔍</div>
+    <h1>Agentic Search</h1>
+    <p class="subtitle">多源并发搜索 · LLM 深度分析 · 学术文献 · 实时资讯</p>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-bar">
+      <input type="text" id="q" placeholder="问任何问题 — 搜索全网并给出结构化回答" autofocus>
+      <button id="btn" onclick="doSearch()">搜索</button>
+    </div>
+  </div>
+
+  <div class="examples" id="examples">
+    <button onclick="go(this)">特朗普访华最新消息</button>
+    <button onclick="go(this)">CRISPR基因编辑脱靶检测</button>
+    <button onclick="go(this)">英伟达B200 vs H100性能对比</button>
+    <button onclick="go(this)">公司裁员N+1补偿计算</button>
+    <button onclick="go(this)">Transformer注意力机制原理</button>
+    <button onclick="go(this)">React Server Components用法</button>
+  </div>
+
+  <div class="pipeline" id="pipeline"></div>
+  <div class="error-box" id="error"></div>
+
+  <div class="result-section" id="resultSection">
+    <div class="meta-bar" id="meta"></div>
+    <div class="answer-header"><button class="copy-btn" id="copyBtn" onclick="copyAnswer()">复制回答</button></div>
+    <div class="answer-card" id="answer"></div>
+    <div class="sources-section">
+      <div class="sources-header" onclick="toggleSources()">
+        <span class="arrow" id="arrow">▶</span>
+        <span id="srcLabel">来源</span>
+      </div>
+      <div class="source-grid" id="srcGrid"></div>
+    </div>
+  </div>
+
+  <div id="empty" class="empty-state">
+    <div class="empty-icon">🌐</div>
+    <p class="empty-text">输入问题，搜索全网获取答案</p>
+    <p class="empty-hint">Serper API + Jina Reader + DeepSeek LLM · 多路并发 · 学术/金融/新闻全覆盖</p>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const qi = $('q');
+qi.addEventListener('keydown', e => { if (e.key === 'Enter' && !$('btn').disabled) doSearch(); });
+function go(el) { qi.value = el.textContent; doSearch(); }
+
+let currentSources = [];
+let rawAnswerText = '';
+let stepIndex = 0;
+
+function addStep(msg, status = 'active') {
+  const pipe = $('pipeline');
+  const id = 'step-' + stepIndex++;
+  const icon = status === 'active' ? '<span class="spinner"></span>' : '✓';
+  const cls = status === 'active' ? 'active' : 'done';
+  pipe.innerHTML += `<div class="pipe-step ${cls}" id="${id}"><span class="pipe-icon">${icon}</span><span>${esc(msg)}</span></div>`;
+  pipe.querySelectorAll('.pipe-step.active').forEach((el, i, arr) => {
+    if (i < arr.length - 1) { el.className = 'pipe-step done'; el.querySelector('.pipe-icon').innerHTML = '✓'; }
+  });
+  return id;
+}
+
+function finishSteps() {
+  $('pipeline').querySelectorAll('.pipe-step.active').forEach(el => {
+    el.className = 'pipe-step done'; el.querySelector('.pipe-icon').innerHTML = '✓';
+  });
+}
+
+async function doSearch() {
+  const q = qi.value.trim(); if (!q) return;
+  $('btn').disabled = true;
+  $('error').classList.remove('show');
+  $('resultSection').classList.remove('show');
+  $('empty').style.display = 'none';
+  $('examples').style.display = 'none';
+  $('pipeline').innerHTML = '';
+  $('answer').innerHTML = '';
+  $('srcGrid').innerHTML = '';
+  $('meta').innerHTML = '';
+  $('hero').classList.add('compact');
+  stepIndex = 0;
+  currentSources = [];
+  rawAnswerText = '';
+
+  addStep('正在分析问题...');
+
+  try {
+    const resp = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q, maxResults: 15 }),
+      signal: AbortSignal.timeout(180000),
+    });
+    if (!resp.ok) { showErr('服务器错误 ' + resp.status); return; }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      let eventType = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+        else if (line.startsWith('data: ') && eventType) {
+          try { handleSSE(eventType, JSON.parse(line.slice(6))); } catch {}
+          eventType = '';
+        }
+      }
+    }
+  } catch (e) {
+    showErr(e.name === 'AbortError' ? '搜索超时，请重试' : '网络错误: ' + e.message);
+  } finally {
+    $('btn').disabled = false;
+    finishSteps();
+  }
+}
+
+const INTENT_LABELS = {
+  news: '📰 时事新闻', academic: '📚 学术研究', finance: '💹 金融财经',
+  entertainment: '🎬 娱乐影视', technical: '💻 技术开发', medical: '🏥 医疗健康',
+  legal: '⚖️ 法律法规', shopping: '🛒 产品比较', general: '🔍 综合搜索',
+};
+
+function handleSSE(event, data) {
+  switch (event) {
+    case 'status':
+      addStep(data.message);
+      break;
+
+    case 'entities': {
+      const intentLabel = INTENT_LABELS[data.intent] || INTENT_LABELS.general;
+      const intentCls = data.intent || 'general';
+      let html = `<div class="intent-bar">`;
+      html += `<span class="intent-badge ${intentCls}">${intentLabel}</span>`;
+      if (data.complexity) {
+        const cLabels = { simple: '简单', medium: '中等', complex: '复杂' };
+        html += `<span class="complexity-tag ${data.complexity}">${cLabels[data.complexity] || data.complexity}</span>`;
+      }
+      if (data.queries) {
+        for (const q of data.queries) html += `<span class="query-tag">${esc(q)}</span>`;
+      }
+      html += `</div>`;
+      $('pipeline').innerHTML += html;
+      break;
+    }
+
+    case 'quick_answer':
+      $('resultSection').classList.add('show');
+      $('answer').innerHTML = '<div style="opacity:0.6;font-size:0.9rem">' + renderMd(data.text || '') + '</div>';
+      break;
+
+    case 'answer': {
+      $('resultSection').classList.add('show');
+      rawAnswerText = data.text || '';
+      let prefix = '';
+      if (data.round && data.round >= 2) {
+        prefix = `<div class="round2-tag">🔄 第${data.round}轮深入搜索后更新</div>`;
+      }
+      let html = renderMd(rawAnswerText);
+      html = html.replace(/\[(\d+)\]/g, (m, n) => {
+        const src = currentSources[parseInt(n) - 1];
+        if (!src) return m;
+        return `<a class="ref" href="${esc(src.url)}" target="_blank" title="${esc(src.title)}">${n}</a>`;
+      });
+      $('answer').innerHTML = prefix + html;
+      break;
+    }
+
+    case 'sources':
+      if (data.sources?.length) {
+        currentSources = data.sources;
+        $('srcLabel').textContent = `来源 (${data.sources.length})`;
+        $('srcGrid').innerHTML = data.sources.map(s => {
+          const tierBadge = s.tier && s.tier !== 'unrated' ? `<span class="tier-badge ${esc(s.tier)}">${esc(s.tier)}</span>` : '';
+          return `
+          <div class="source-card">
+            <span class="src-num">${s.index}</span>
+            <div class="src-info">
+              <div class="src-title"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.url)}</a>${tierBadge}</div>
+              <div class="src-meta"><span class="src-badge">${esc(s.source)}</span><span>${esc(domainOf(s.url))}</span></div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+      break;
+
+    case 'done': {
+      finishSteps();
+      const elapsed = data.elapsed || 0;
+      const timeStr = elapsed > 60000 ? `${(elapsed / 60000).toFixed(1)}分钟` : `${(elapsed / 1000).toFixed(1)}秒`;
+      let html = `<span class="chip">⏱ ${timeStr}</span>`;
+      html += `<span class="chip">🔄 ${data.rounds || 1}轮搜索</span>`;
+      html += `<span class="chip">📊 ${data.total || 0}条结果</span>`;
+      if (data.complexity) {
+        const cLabels = { simple: '简单查询', medium: '中等查询', complex: '复杂查询' };
+        html += `<span class="chip">🧠 ${cLabels[data.complexity] || data.complexity}</span>`;
+      }
+      const srcParts = Object.entries(data.sources || {}).filter(([, v]) => v > 0).map(([k, v]) => `${k}(${v})`);
+      if (srcParts.length) html += `<span class="chip">📡 ${srcParts.join(' · ')}</span>`;
+      if (data.citations && data.citations.total > 0) {
+        html += `<span class="chip">🔗 引用${data.citations.alive}/${data.citations.total}活</span>`;
+      }
+      $('meta').innerHTML = html;
+
+      // Confidence indicator
+      const conf = data.confidence || 0;
+      if (conf > 0) {
+        const level = conf >= 80 ? 'high' : conf >= 50 ? 'medium' : 'low';
+        const levelLabel = conf >= 80 ? '高置信度' : conf >= 50 ? '中置信度' : '低置信度';
+        const confHtml = `<div class="confidence-bar">
+          <span class="conf-label ${level}">${levelLabel} ${conf}%</span>
+          <div class="conf-meter"><div class="conf-fill ${level}" style="width:${conf}%"></div></div>
+        </div>`;
+        $('answer').insertAdjacentHTML('beforebegin', confHtml);
+      }
+
+      // Evidence summary
+      const ev = data.evidenceSummary;
+      if (ev && (ev.constraintsSatisfied?.length || ev.constraintsUnsatisfied?.length || ev.keyFacts?.length || ev.conflictingClaims?.length)) {
+        let evHtml = `<div class="evidence-section">
+          <div class="evidence-header" onclick="toggleEvidence()">
+            <span class="arrow" id="evArrow">▶</span><span>证据摘要</span>
+          </div>
+          <div class="evidence-body" id="evBody">`;
+        if (ev.constraintsSatisfied?.length) {
+          evHtml += `<div style="margin-bottom:6px;font-size:0.76rem;color:var(--text3);font-weight:600">✅ 已满足约束</div>`;
+          ev.constraintsSatisfied.forEach(c => { evHtml += `<div class="ev-row"><span class="ev-icon ev-satisfied">✓</span><span>${esc(c)}</span></div>`; });
+        }
+        if (ev.constraintsUnsatisfied?.length) {
+          evHtml += `<div style="margin:8px 0 6px;font-size:0.76rem;color:var(--text3);font-weight:600">❌ 未满足约束</div>`;
+          ev.constraintsUnsatisfied.forEach(c => { evHtml += `<div class="ev-row"><span class="ev-icon ev-unsatisfied">✗</span><span>${esc(c)}</span></div>`; });
+        }
+        if (ev.keyFacts?.length) {
+          evHtml += `<div style="margin:8px 0 6px;font-size:0.76rem;color:var(--text3);font-weight:600">📌 关键事实</div>`;
+          ev.keyFacts.forEach(f => { evHtml += `<div class="ev-fact">· ${esc(f)}</div>`; });
+        }
+        if (ev.conflictingClaims?.length) {
+          evHtml += `<div style="margin:8px 0 6px;font-size:0.76rem;color:var(--text3);font-weight:600">⚠️ 矛盾声明</div>`;
+          ev.conflictingClaims.forEach(c => { evHtml += `<div class="ev-conflict">⚡ ${esc(c)}</div>`; });
+        }
+        evHtml += `</div></div>`;
+        $('answer').insertAdjacentHTML('afterend', evHtml);
+      }
+      break;
+    }
+
+    case 'error':
+      showErr(data.message);
+      break;
+  }
+}
+
+function toggleSources() {
+  const g = $('srcGrid'), a = $('arrow');
+  const open = g.classList.toggle('open');
+  a.classList.toggle('open', open);
+}
+
+function toggleEvidence() {
+  const b = $('evBody'), a = $('evArrow');
+  if (!b || !a) return;
+  const open = b.classList.toggle('open');
+  a.classList.toggle('open', open);
+}
+
+function copyAnswer() {
+  if (!rawAnswerText) return;
+  navigator.clipboard.writeText(rawAnswerText).then(() => {
+    const btn = $('copyBtn');
+    btn.textContent = '已复制 ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '复制回答'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function showErr(m) { $('error').textContent = m; $('error').classList.add('show'); finishSteps(); }
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function domainOf(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+
+function renderMd(text) {
+  if (!text) return '';
+  let h = esc(text);
+  h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${code.trim()}</code></pre>`);
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+  h = h.replace(/((?:^\|.+\|$\n?)+)/gm, (block) => {
+    const rows = block.trim().split('\n').filter(r => r.trim());
+    if (rows.length < 2) return block;
+    const isSep = r => /^\|[\s\-:|]+\|$/.test(r.trim());
+    let headEnd = isSep(rows[1]) ? 1 : -1;
+    let out = '<table>';
+    for (let i = 0; i < rows.length; i++) {
+      if (isSep(rows[i])) continue;
+      const cells = rows[i].split('|').slice(1, -1).map(c => c.trim());
+      const tag = (i < headEnd || (headEnd === -1 && i === 0)) ? 'th' : 'td';
+      out += '<tr>' + cells.map(c => `<${tag}>${c}</${tag}>`).join('') + '</tr>';
+    }
+    return out + '</table>';
+  });
+  h = h.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  h = h.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  h = h.replace(/^---$/gm, '<hr>');
+  h = h.replace(/((?:^[\-\*] .+$\n?)+)/gm, (block) => {
+    const items = block.trim().split('\n').map(l => l.replace(/^[\-\*] /, ''));
+    return '<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+  });
+  h = h.replace(/((?:^\d+\. .+$\n?)+)/gm, (block) => {
+    const items = block.trim().split('\n').map(l => l.replace(/^\d+\. /, ''));
+    return '<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
+  });
+  h = h.replace(/\n\n+/g, '</p><p>');
+  h = '<p>' + h + '</p>';
+  h = h.replace(/([^>])\n([^<])/g, '$1<br>$2');
+  h = h.replace(/<p>\s*<\/p>/g, '');
+  return h;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_description": "Agentic Search 工具定义 — 适用于 OpenAI / DeepSeek / Claude function calling 和 ReAct agent",
+
+  "openai_tool": {
+    "type": "function",
+    "function": {
+      "name": "web_search",
+      "description": "搜索互联网获取最新信息。当遇到以下情况时调用：1) 用户询问实时数据（新闻/股价/天气/油价/汇率）；2) 需要验证事实或查找你不确定的信息；3) 涉及训练数据截止后的事件；4) 用户明确要求搜索或查找信息；5) 需要引用来源支持回答。不要对简单的闲聊、数学计算、代码生成等任务调用此工具。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "搜索关键词，尽量精确具体。例如：'2026年中国GDP增速' 而非 '中国经济怎么样'"
+          }
+        },
+        "required": ["query"]
+      }
+    }
+  },
+
+  "deepseek_tool": {
+    "type": "function",
+    "function": {
+      "name": "web_search",
+      "description": "搜索互联网获取最新信息和实时数据。在以下场景触发：时事新闻、实时数据查询（股价/天气/汇率/油价）、事实核查、训练数据截止后的事件、需要引用来源。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "搜索关键词"
+          },
+          "max_results": {
+            "type": "integer",
+            "description": "最大返回结果数，默认10",
+            "default": 10
+          }
+        },
+        "required": ["query"]
+      }
+    }
+  }
+}

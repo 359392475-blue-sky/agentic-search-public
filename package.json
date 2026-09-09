@@ -1,0 +1,52 @@
+{
+  "name": "agentic-search",
+  "version": "1.0.0",
+  "description": "Agentic search engine — multi-source parallel search with LLM-powered analysis, domain routing, and streaming answers. Provides Agent JSON API for ReAct/function-calling integration.",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "serve": "tsx src/server.ts",
+    "start": "tsx src/server.ts",
+    "dev": "tsx watch src/server.ts"
+  },
+  "keywords": [
+    "search-engine",
+    "agentic",
+    "llm",
+    "multi-source",
+    "deepseek",
+    "serper",
+    "streaming",
+    "react-agent",
+    "function-calling",
+    "tool-use"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "docutext": "^1.2.1",
+    "unpdf": "^1.6.2",
+    "playwright-core": "^1.60.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.7.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  },
+  "agentIntegration": {
+    "apiEndpoint": "POST /api/agent/search",
+    "streamEndpoint": "POST /api/search (SSE)",
+    "requiredEnv": ["DEEPSEEK_API_KEY"],
+    "recommendedEnv": ["SERPER_API_KEY", "JINA_API_KEY"],
+    "runtimeDeps": [
+      "Node.js >= 18",
+      "Chromium (npx playwright install chromium) — only needed if SERPER_API_KEY is not set"
+    ],
+    "docs": "integration/API.md",
+    "toolDefinition": "integration/tool-definition.json",
+    "examples": {
+      "python": "integration/react-agent-example.py",
+      "typescript": "integration/react-agent-example.ts"
+    }
+  }
+}
