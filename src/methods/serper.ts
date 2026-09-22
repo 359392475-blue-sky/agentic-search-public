@@ -16,9 +16,9 @@ export class SerperSearchMethod extends BaseMethod {
 
   private apiKey: string;
 
-  constructor(apiKey?: string) {
+  constructor() {
     super();
-    this.apiKey = apiKey || process.env.SERPER_API_KEY || '';
+    this.apiKey = (process.env.SERPER_API_KEY ?? '').trim();
   }
 
   get isAvailable(): boolean {
@@ -26,9 +26,13 @@ export class SerperSearchMethod extends BaseMethod {
   }
 
   async execute(params: Record<string, unknown>): Promise<SearchResult[]> {
+    if (!this.apiKey) {
+      throw new Error('Serper search requires the SERPER_API_KEY environment variable.');
+    }
+
     const query = (params.query as string) ?? '';
     const maxResults = (params.maxResults as number) ?? 10;
-    if (!query || !this.apiKey) return [];
+    if (!query) return [];
 
     const gl = (params.gl as string) ?? (/[\u4e00-\u9fff]/.test(query) ? 'cn' : 'us');
     const hl = (params.hl as string) ?? (/[\u4e00-\u9fff]/.test(query) ? 'zh-cn' : 'en');
@@ -49,7 +53,7 @@ export class SerperSearchMethod extends BaseMethod {
       });
 
       if (!resp.ok) {
-        console.error(`[Serper] HTTP ${resp.status}: ${await resp.text().catch(() => '')}`);
+        console.error(`[Serper] HTTP ${resp.status}`);
         return [];
       }
 

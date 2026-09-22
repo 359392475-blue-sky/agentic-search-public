@@ -6,6 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
+    "test": "tsx --test tests/*.test.ts",
     "serve": "tsx src/server.ts",
     "start": "tsx src/server.ts",
     "dev": "tsx watch src/server.ts"
